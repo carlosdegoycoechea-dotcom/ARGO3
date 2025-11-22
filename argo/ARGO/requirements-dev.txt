@@ -1,0 +1,16 @@
+# Development dependencies for ARGO
+# Install with: pip install -r requirements-dev.txt
+
+# Testing
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.0.0
+
+# Optional: for full test coverage
+# Uncomment if needed for complete tests
+
+# pytesseract>=0.3.10  # OCR plugin tests
+# Pillow>=10.0.0       # OCR plugin tests
+# pandas>=2.0.0        # Excel plugin tests (ya en requirements.txt)
+# openpyxl>=3.1.0      # Excel plugin tests (ya en requirements.txt)
+# numpy>=1.24.0        # Excel plugin tests (ya en requirements.txt)

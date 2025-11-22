@@ -1,0 +1,288 @@
+# ARGO v9.0 - Unified Configuration
+# Single source of truth for system configuration
+
+version:
+  major: 9
+  minor: 0
+  patch: 0
+  codename: "Clean"
+  display_name: "ARGO v9.0 - Enterprise PMO Platform"
+
+# System paths (relative to project root)
+paths:
+  data_dir: "data"
+  projects_dir: "data/projects"
+  library_cache: "data/library_cache"
+  logs_dir: "logs"
+  temp_dir: "temp"
+
+# Database configuration
+database:
+  unified_db: "data/argo_unified.db"
+  backup_enabled: true
+  backup_interval_hours: 24
+
+# API Configuration (keys come from .env)
+apis:
+  openai:
+    enabled: true
+    default_model: "gpt-4o-mini"
+    models:
+      chat: "gpt-4o-mini"
+      analysis: "gpt-4o"
+      embeddings: "text-embedding-3-small"
+    temperature:
+      chat: 0.7
+      analysis: 0.2
+  
+  anthropic:
+    enabled: false  # Set to true if ANTHROPIC_API_KEY in .env
+    default_model: "claude-3-5-sonnet-20241022"
+    temperature: 0.7
+  
+  google_drive:
+    enabled: false  # Set to true if google_credentials.json exists
+    credentials_file: "google_credentials.json"
+    library_folder_id: null  # Set your Google Drive folder ID here
+
+# RAG Engine Configuration
+rag:
+  # Chunking strategy
+  chunking:
+    min_chunk_size: 500
+    default_chunk_size: 1000
+    max_chunk_size: 1500
+    chunk_overlap_ratio: 0.2
+    separators:
+      - "\n\n"
+      - "\n"
+      - ". "
+      - " "
+      - ""
+  
+  # Search configuration
+  search:
+    default_top_k: 5
+    max_top_k: 20
+    use_hyde: true
+    use_reranker: true
+    enable_semantic_cache: true
+    cache_ttl_seconds: 3600
+  
+  # Score normalization
+  normalization:
+    enabled: true
+    min_threshold: 0.5
+
+# Model Router Configuration
+model_router:
+  # Task type routing
+  task_routing:
+    chat:
+      provider: "openai"
+      model: "gpt-4o-mini"
+      temperature: 0.7
+    
+    analysis:
+      provider: "openai"
+      model: "gpt-4o"
+      temperature: 0.2
+    
+    summary:
+      provider: "openai"
+      model: "gpt-4o-mini"
+      temperature: 0.5
+    
+    rewrite:
+      provider: "anthropic"
+      model: "claude-3-5-sonnet-20241022"
+      temperature: 0.7
+      fallback_to_openai: true
+    
+    brainstorm:
+      provider: "openai"
+      model: "gpt-4o"
+      temperature: 0.9
+  
+  # Dual mode configuration
+  dual_mode:
+    enabled: false
+    strategy: "compare"  # "compare" or "consensus"
+    tasks_eligible:
+      - "analysis"
+      - "audit"
+
+# Budget and cost tracking
+budget:
+  enabled: true
+  monthly_limit_usd: 200.0
+  daily_limit_usd: 10.0
+  alert_threshold_percent: 80
+  
+  # Model pricing (USD per 1K tokens)
+  pricing:
+    openai:
+      gpt-4o-mini:
+        input: 0.00015
+        output: 0.00060
+      gpt-4o:
+        input: 0.0025
+        output: 0.010
+      text-embedding-3-small:
+        input: 0.00002
+    
+    anthropic:
+      claude-3-5-sonnet-20241022:
+        input: 0.003
+        output: 0.015
+
+# Library Manager Configuration
+library:
+  enabled: true
+  sync_enabled: false  # Enable when Drive integration ready
+  sync_interval_minutes: 60
+  
+  # Auto-categorization by subfolder
+  categories:
+    - name: "PMI"
+      patterns: ["PMI/", "Project Management Institute/"]
+    - name: "AACE"
+      patterns: ["AACE/", "Association for the Advancement/"]
+    - name: "ED_STO"
+      patterns: ["ED_STO/", "ED/", "STO/"]
+    - name: "DCMA"
+      patterns: ["DCMA/", "Defense Contract/"]
+    - name: "General"
+      patterns: ["*"]
+
+# UI Configuration
+ui:
+  corporate_mode: true
+  
+  formatting:
+    emojis_enabled: false
+    markdown_decorations: false
+    date_format: "ISO_8601"
+    lists_style: "numbered"
+  
+  theming:
+    primary_color: "#1f4788"
+    secondary_color: "#2c5aa0"
+    accent_color: "#4a90e2"
+  
+  page:
+    title: "ARGO - Enterprise PMO Platform"
+    icon: "📊"
+    layout: "wide"
+
+# Logging Configuration
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  
+  handlers:
+    console:
+      enabled: true
+      level: "INFO"
+    
+    file:
+      enabled: true
+      level: "DEBUG"
+      max_bytes: 10485760  # 10MB
+      backup_count: 5
+  
+  loggers:
+    bootstrap: "INFO"
+    rag_engine: "INFO"
+    model_router: "INFO"
+    library_manager: "INFO"
+
+# Feature Flags
+features:
+  web_search: true
+  vision_analysis: true
+  proactive_agent: true
+  streaming_responses: true
+  feedback_system: true
+  memory_system: true
+  project_notes: true
+
+# Performance
+performance:
+  vectorstore:
+    batch_size: 100
+    n_results_multiplier: 2  # Fetch 2x before reranking
+  
+  api:
+    timeout_seconds: 60
+    max_retries: 3
+    retry_delay_seconds: 2
+
+# Project Types
+project_types:
+  - id: "standard"
+    name: "Standard Project"
+    description: "General project management"
+    default_task: "chat"
+  
+  - id: "ed_sto"
+    name: "ED/STO Project"
+    description: "Engineering & Construction project with ED/STO standards"
+    default_task: "analysis"
+  
+  - id: "library"
+    name: "Knowledge Library"
+    description: "Reference library project"
+    default_task: "summary"
+
+# Advanced Features
+advanced:
+  # Conversation management
+  conversation:
+    max_history: 8
+    summarization_threshold: 15
+    auto_summarize: true
+  
+  # Context building
+  context:
+    max_tokens: 8000
+    include_project_files: true
+    include_library: true
+    library_weight: 0.3
+  
+  # Memory management
+  memory:
+    enabled: true
+    max_memories_per_project: 100
+    relevance_threshold: 0.6
+
+# Monitoring and Alerts
+monitoring:
+  enabled: true
+  
+  watchers:
+    resource_usage:
+      enabled: true
+      check_interval_seconds: 300
+    
+    api_costs:
+      enabled: true
+      check_interval_seconds: 600
+    
+    file_changes:
+      enabled: true
+      check_interval_seconds: 60
+  
+  alerts:
+    budget_threshold: 0.8
+    disk_space_threshold_gb: 1.0
+    memory_threshold_percent: 85
+
+# Migration and Compatibility
+compatibility:
+  legacy_mode: false
+  import_v8_data: false
+  
+migration:
+  backup_before_migrate: true
+  validate_after_migrate: true

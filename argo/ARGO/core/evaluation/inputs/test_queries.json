@@ -1,0 +1,58 @@
+[
+  {
+    "id": "test_001",
+    "category": "general",
+    "query": "What is the critical path in project management?",
+    "expected_keywords": ["critical", "path", "longest", "sequence", "activities", "duration"],
+    "should_use_library": true
+  },
+  {
+    "id": "test_002",
+    "category": "standards_pmi",
+    "query": "According to PMI, what are the main process groups in project management?",
+    "expected_keywords": ["PMI", "initiating", "planning", "executing", "monitoring", "controlling", "closing"],
+    "should_use_library": true
+  },
+  {
+    "id": "test_003",
+    "category": "ed_sto",
+    "query": "What are best practices for shutdown planning in industrial maintenance?",
+    "expected_keywords": ["shutdown", "planning", "maintenance", "schedule", "resources", "safety"],
+    "should_use_library": true
+  },
+  {
+    "id": "test_004",
+    "category": "schedule_analysis",
+    "query": "How do you calculate float in a project schedule?",
+    "expected_keywords": ["float", "slack", "early", "late", "start", "finish", "critical"],
+    "should_use_library": true
+  },
+  {
+    "id": "test_005",
+    "category": "cost_management",
+    "query": "What is Earned Value Management and how is it calculated?",
+    "expected_keywords": ["earned", "value", "EVM", "planned", "actual", "cost", "performance"],
+    "should_use_library": true
+  },
+  {
+    "id": "test_006",
+    "category": "risk",
+    "query": "What are the main steps in project risk management?",
+    "expected_keywords": ["risk", "identification", "assessment", "mitigation", "monitoring", "response"],
+    "should_use_library": true
+  },
+  {
+    "id": "test_007",
+    "category": "quality",
+    "query": "What quality control techniques are used in project management?",
+    "expected_keywords": ["quality", "control", "inspection", "testing", "standards", "metrics"],
+    "should_use_library": true
+  },
+  {
+    "id": "test_008",
+    "category": "aace",
+    "query": "According to AACE, what are the cost estimate classification levels?",
+    "expected_keywords": ["AACE", "estimate", "classification", "class", "accuracy", "maturity"],
+    "should_use_library": true
+  }
+]

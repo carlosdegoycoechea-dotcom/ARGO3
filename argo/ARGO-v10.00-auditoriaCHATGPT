@@ -1,0 +1,559 @@
+1. Resumen ejecutivo
+Lo bueno (avance real)
+
+Arquitectura mucho más seria y limpia
+
+Separación clara en:
+
+backend/ → FastAPI + WebSocket + API REST
+
+core/ → Bootstrap, RAG, router de modelos, DB unificada, herramientas
+
+frontend/ → React + Vite + UI moderna tipo dashboard
+
+core/bootstrap.py concentra toda la inicialización: logging, config, DB, router de modelos, vectorstores y RAG, proyecto activo, etc.
+→ Esto encaja con tu pedido de “un solo cerebro” en vez de mil scripts sueltos.
+
+Base sólida de “motor de IA”
+
+core/llm_provider.py: capa de abstracción para OpenAI / Anthropic, con tipos, LLMResponse, etc.
+
+core/model_router.py: router inteligente que elige proveedor/modelo según task_type (chat, analysis, audit, etc.), con idea de tracking de costes y tokens.
+
+core/rag_engine.py + core/tools/extractors.py:
+
+Chunking centralizado configurable (min/default/max, overlap, separadores) vía settings.yaml.
+
+RAG avanzado con:
+
+Colección de proyecto + colección de biblioteca global.
+
+Cache semántica para queries (HyDE + reranking según docstring).
+
+Configuración detallada en rag: dentro de settings.yaml.
+
+Esto es una evolución clara respecto a la 8.5.3, donde ya habíamos mejorado RAG pero más “pegado” a Streamlit.
+
+Base de datos unificada en SQLite bien planteada
+
+core/unified_database.py:
+
+Tablas para:
+
+projects (id, tipo, estado, metadata…)
+
+files (por proyecto, hash, tamaño, estado, número de chunks…)
+
+conversations, messages
+
+api_usage con agregados y get_api_usage_summary(days) para el panel de analytics.
+
+Índices sobre proyectos y archivos (idx_project_name, idx_file_unique, etc.).
+→ Encaja totalmente con tu requisito de “SQLite como núcleo del sistema”.
+
+Frontend moderno y enfocado al flujo PMO
+
+Dashboard.tsx organiza todo en tabs:
+
+ChatInterface (asistente)
+
+DocumentsPanel (documentos del proyecto)
+
+AnalyticsPanel (métricas de uso / coste API)
+
+NotesPanel (notas y minutas, hoy con datos dummy)
+
+ProjectPanel (configuración del proyecto)
+
+ChatInterface.tsx:
+
+Soporte explícito para sources y confidence:
+
+Muestra “Sources Used” y un badge de % CONFIDENCE por respuesta.
+
+Soporte visual para feedback (ThumbsUp/Down, regenerate).
+→ Esto refleja bien las mejoras que habíamos definido: mostrar fuentes, confianza y formato corporativo sin emojis.
+
+Módulo de análisis de Excel estable
+
+core/tools/analyzers/excel_analyzer.py es muy completo:
+
+Detección de headers, tipos de datos, métricas estadísticas, etc.
+
+Esto recoge y amplía la “capacidad de análisis Excel” planificada en el fix plan de v8.5.3.
+
+En síntesis: como arquitectura y base técnica, v10.01 está fuerte. Está mucho mejor pensado para crecer que las versiones 8.x/9 que corrían sobre Streamlit.
+
+Lo preocupante / huecos importantes
+
+Hay varios puntos donde el código no llega a lo que dicen los documentos o a lo que vos necesitás que haga el sistema:
+
+Carga de documentos sin indexación real en el vectorstore
+
+En backend/main.py, endpoint /api/documents → upload_document:
+
+Se guarda el archivo en disco y se registra en la tabla files.
+
+Hay un comentario directo:
+# TODO: Index chunks in vectorstore
+
+Es decir, no está llamando a extract_and_chunk ni insertando esos chunks en Chroma.
+
+El README dice que “Files are automatically indexed for search”, pero el código actual no lo cumple.
+→ Resultado: subir un PDF/Excel por la UI no lo hace accesible al RAG todavía.
+
+Schedule Analyzer / análisis de cronogramas NO está
+
+En la rama 8.5.3 se documentó un ScheduleAnalyzer para XER (Primavera) con CPM, riesgos, etc.
+
+En v10.01:
+
+Solo existe core/tools/analyzers/excel_analyzer.py.
+
+No hay schedule_analyzer.py, ni referencias a ScheduleAnalyzer, ni a XER/MPP en el código.
+→ Es una regresión clara respecto al objetivo de análisis de cronogramas (P6/MPP), que es central en tu uso real.
+
+Sin integración de búsqueda web / fuentes externas
+
+En core/ no hay ninguna herramienta de web search (no Tavily, no requests + scraping, no integración a través de LangChain).
+
+El router de modelos solo combina RAG + LLM, pero nada que traiga métricas externas (por ejemplo, productividad de piping) para combinarlas con tu Excel/XER, que es algo que explícitamente pediste.
+→ ARGO v10.01 sigue siendo 100% dependiente de los documentos internos. No hay capa “web” para complementar.
+
+Watchers / monitoreo: diseño, pero sin implementación
+
+core/bootstrap._init_watchers intenta importar monitoring.watchers.WatcherManager.
+
+No hay carpeta monitoring/ en el zip → fallará el import y desactiva watchers con un warning.
+
+En la base de datos tampoco hay tablas específicas para watchers, errores de sync, etc.
+→ El concepto está, pero no hay watcher real vigilando carpetas, ni integrando con Drive a nivel “daemon” continuo.
+
+Notas / minutas: UI bonita, pero sin persistencia real
+
+NotesPanel.tsx usa un arreglo MOCK_NOTES hardcodeado.
+
+No hay llamadas a backend (notesAPI ni endpoints /api/notes).
+→ Para tu flujo de minutas y MoM, hoy esto es solo una maqueta visual.
+
+Feedback (Thumbs Up / Down) sin wiring
+
+En ChatInterface.tsx están los botones de like/dislike y regenerate.
+
+No tienen handlers conectados a un endpoint de /api/feedback ni a una MemoryManager.
+
+En el backend tampoco hay endpoints de feedback.
+→ Respecto a lo que definimos en el plan (usar feedback para entrenar memoria y ajustar comportamiento) , no está implementado aún (es decorativo).
+
+Gestión de proyectos: hay “un proyecto activo”, pero no UI de multi-proyecto
+
+core/bootstrap.initialize_argo(project_name):
+
+Usa PROJECT_NAME o DEFAULT_PROJECT y asegura que exista en la DB.
+
+Backend expone /api/project pero no hay endpoints para listar/cambiar proyectos.
+
+Frontend no tiene selector de proyecto → se trabaja siempre con uno.
+→ Para tu requisito de proyecto único ahora y multi-proyecto más adelante, la parte técnica está encaminada (DB y bootstrap), pero falta la capa de UI y API para gestionar varios proyectos.
+
+Desalineo de versión / naming
+
+El archivo settings.yaml sigue indicando:
+
+display_name: "ARGO v9.0 - Enterprise PMO Platform".
+
+El paquete se llama ARGO_v10.01.
+→ No afecta la ejecución, pero confunde para debugging y para saber qué versión corre.
+
+Riesgos de compatibilidad / instalación
+
+backend/requirements.txt tiene una pila importante:
+
+fastapi, uvicorn, langchain 0.3.13, chromadb, sentence-transformers, google-api-python-client, etc.
+
+frontend/package.json trae un stack moderno (Vite + React + Tailwind + shadcn).
+Algunos números de versión se ven bastante “adelantados”, lo que puede generar conflictos en npm install en Windows.
+→ No es un bug de código en sí, pero hace probable que en tu máquina aparezcan errores de instalación/compilación del frontend.
+
+2. Evaluación por capa respecto a tus objetivos
+2.1. Configuración y bootstrap
+
+core/config.py + core/config/settings.yaml forman un Configuration Manager decente:
+
+Carga de .env + YAML.
+
+Habilita/deshabilita proveedores según disponibilidad de API keys (OpenAI, Anthropic, Google).
+
+core/bootstrap.py:
+
+Inicializa logging, DB, router de modelos, vectorstores (Chroma) y RAG para:
+
+Vectorstore de proyecto (data/projects/<project>/vectors)
+
+Vectorstore de librería (data/library_cache)
+
+Admite proyecto por nombre (PROJECT_NAME en env).
+
+✅ Bien alineado con lo que pedías: un solo lugar de arranque, configurable, con SQLite + RAG + modelos.
+⚠️ Faltan:
+
+Hook explícito para correr evaluaciones automáticas en startup o on-demand (aunque existe core/evaluation/evaluate.py).
+
+Parámetros para desactivar módulos pesados (Google Drive, sentence-transformers) si corrés en hardware limitado (ej. Raspberry).
+
+2.2. Unified Database
+
+Estructura muy razonable para:
+
+Proyectos
+
+Archivos
+
+Conversaciones / mensajes
+
+Uso de API (tokens, coste).
+
+Hay métodos para resumen de uso (get_api_usage_summary) usados por /api/analytics.
+
+✅ En línea con tu requisito de SQLite central para proyectos, métricas y logs.
+❌ No se ven tablas para:
+
+Audios / transcripciones
+
+Watchers
+
+Versionado de cronogramas
+
+Snapshots de tareas / tendencias
+
+Para tu objetivo completo de PMO (cronogramas + audios + versiones), esta DB es un buen nivel 1, pero aún no cubre todo tu modelo de datos.
+
+2.3. Motor de modelos (LLMProvider + ModelRouter)
+
+core/llm_provider.py:
+
+Abstrae proveedores (OpenAI, Anthropic, etc.) y maneja:
+
+model, temperature, max_tokens
+
+Llamadas sin herramientas (y con herramientas via bind_tools).
+
+core/model_router.py:
+
+Usa task_type (chat, analysis, audit, etc.) y config para decidir:
+
+Proveedor (openai/anthropic/…)
+
+Modelo concreto
+
+Parámetros finales (temperature, max tokens)
+
+En settings.yaml se ve que:
+
+task_types.chat.model → ej. gpt-4o-mini
+
+También hay configuración de anthropic.default_model (ej. Claude Sonnet).
+
+✅ Esto cumple bien tu requisito de poder alternar modelos (OpenAI / Claude) a nivel de sistema.
+❌ La UI para cambiar esos modelos todavía es solo conceptual:
+
+ProjectPanel.tsx tiene tarjetas de “AI Settings / RAG Configuration”, pero hoy:
+
+Los switches son defaultChecked sin conexión a backend.
+
+No hay formularios que realmente actualicen settings.yaml o una tabla de configuración en SQLite.
+
+2.4. RAG Engine y extractores
+
+core/tools/extractors.py:
+
+Centraliza extracción y chunking.
+
+Usa RecursiveCharacterTextSplitter con parámetros dinámicos tomados de settings.yaml:
+
+min_chunk_size, default_chunk_size, max_chunk_size, chunk_overlap_ratio, separators.
+
+core/rag_engine.py:
+
+Usa dos vectorstores (proyecto + librería).
+
+Tiene cache semántica de queries (comparación de similitud entre queries con un umbral configurable).
+
+Expone search(query, top_k, use_hyde, use_reranker, include_library) y devuelve results, metadata.
+
+✅ Conceptualmente es un RAG potente, superior a lo que teníamos en 8.5.3.
+❌ El talón de Aquiles ahora mismo es:
+
+La tubería de indexación no está cerrada:
+
+Subís archivos por la UI → DB los registra, pero no se ve el paso:
+
+upload_document → extract_and_chunk → vectorstore.add_documents(...) → actualizar chunk_count.
+
+No vi un script CLI (tipo python tools/index_project.py) que recorra data/projects/<project>/files y regenere índices.
+
+2.5. Herramientas de análisis (Excel / Cronogramas)
+
+Excel:
+
+Bien implementado en ExcelAnalyzer (detalles sólidos).
+
+Falta:
+
+Un endpoint REST que use este analizador (ej. /api/analysis/excel) y lo conecte con la UI.
+
+Cronogramas:
+
+No hay código para XER/MPP en esta versión.
+
+En 8.5.3 existía un plan y un módulo ejemplo ScheduleAnalyzer para XER.
+
+Conclusión: has ganado un gran analizador de Excel, pero perdiste (o aún no migraste) todo lo de cronogramas, que para vos es crítico.
+
+2.6. Integración con Google Drive y watchers
+
+core/tools/google_drive_sync.py:
+
+Código real para:
+
+Autenticar con Google API.
+
+Recorrer una carpeta de Drive.
+
+Descargar archivos a library_cache.
+
+Calcular hashes, estadísticas de sync, etc.
+
+En settings.yaml:
+
+google_drive.library_folder_id, sync_enabled: false.
+
+✅ Está encaminado para montar una librería global con normas (PMI, AACE, etc.).
+❌ No está integrado todavía con:
+
+Un scheduler o watcher real.
+
+Un pipeline que tome esos archivos descargados y los meta en el vectorstore.
+
+2.7. Backend API
+
+Principales endpoints en backend/main.py:
+
+/api/health → OK para testear backend.
+
+/api/project → devuelve info del proyecto activo.
+
+/api/chat → hace:
+
+rag_engine.search(...)
+
+model_router.run(task_type="chat", messages=[Human + Context])
+
+Devuelve message, sources, confidence, metadata.
+
+/ws/chat → WebSocket para chat en tiempo real.
+
+/api/documents (GET) → lista archivos por proyecto desde la DB.
+
+/api/documents (POST) → sube archivo + registra en DB (pero sin indexar).
+
+/api/analytics → usa get_api_usage_summary para retornar datos de consumo.
+
+✅ Diseño correcto y alineado con el frontend.
+❌ Huecos:
+
+No hay endpoints para:
+
+Guardar notas / minutas.
+
+Gestionar múltiples proyectos (listar, crear, cambiar).
+
+Feedback de mensajes (like/dislike).
+
+Endpoints específicos de análisis (Excel/XER) que devuelvan KPIs de cronograma.
+
+2.8. Frontend
+
+UI: moderna, limpia, corporativa (sin emojis, buen uso de shadcn, paneles, etc.).
+
+ChatInterface:
+
+Muestra mensajes, loading, streaming por WS, fuentes y confidence.
+
+Botones de adjuntar archivos conectados con /api/documents.
+
+DocumentsPanel:
+
+Soporta drag-and-drop y lista de documentos con iconos por tipo.
+
+AnalyticsPanel:
+
+Se conecta a /api/analytics para mostrar tokens/costes.
+
+NotesPanel:
+
+Solo muestra datos dummy, sin integración.
+
+ProjectPanel:
+
+Muestra tarjetas de configuración (streaming, library, etc.) pero sin wiring real.
+
+En resumen: la UI está en un 70% visual / 30% funcional. Para tu flujo real de trabajo (cronograma + Excel + minutas + auditoría), hay que completar ese wiring.
+
+3. Comparación directa con lo planificado en v8.5.3
+
+Tomando el resumen y el plan de corrección de 8.5.3 como checklist:
+
+Feedback buttons corregidos →
+
+Streamlit: Sí (era el bug de keys duplicadas).
+
+React v10.01: UI nueva, botones presentes pero sin lógica → hay que reimplementar el feedback pero ahora sobre API REST/WebSocket.
+
+RAG mejorado: más contexto, más chunks, metadata y similarity scores →
+
+v10.01: Sí, pero con otro enfoque (configurable, HyDE, reranking, cache).
+
+Falta cerrar el pipeline de indexación.
+
+System prompt más asertivo, formato corporativo, referencias obligatorias →
+
+Parte del prompt quedó embebida en settings.yaml / config + en diseño de UI (sources/confidence).
+
+Se nota la intención, y el backend devuelve ya sources para mostrarlos.
+
+Análisis Excel →
+
+Implementado de forma más robusta (ExcelAnalyzer), pero sin endpoint ni UI específica para lanzar un análisis desde el chat o desde un panel.
+
+Análisis XER/MPP →
+
+Perdido / no migrado en v10.01.
+
+Mostrar fuentes + confidence en UI →
+
+Implementado en ChatInterface.tsx (y el backend provee la info).
+
+Nombrar conversaciones, header fijo con contexto, contador de chunks, etc. →
+
+No lo vi en la UI actual; hay solo un flujo de conversación tipo “single chat”.
+
+4. Conclusión de auditoría
+¿Está “bien” la versión?
+
+Arquitectónicamente: sí, es claramente un salto de calidad frente a las versiones previas.
+
+Funcionalmente, respecto a lo que vos necesitás:
+
+Está a medio camino.
+
+Tenés un buen núcleo (RAG, DB, router, frontend moderno), pero:
+
+Falta conectar indexación de documentos.
+
+Falta traer de vuelta el análisis de cronogramas.
+
+Falta wiring de feedback, notas/minutas y configuración de modelos.
+
+Falta cualquier capa de búsqueda web que complemente tus datos internos.
+
+5. Plan de mejora priorizado (sin estimar tiempos)
+Fase 0 – Que v10.01 corra estable en tu máquina
+
+Verificar instalación mínima:
+
+Backend: entorno con python 3.11, pip install -r backend/requirements.txt.
+
+Frontend: npm install en ARGO/frontend y npm run dev o npm run build.
+
+Si el frontend da errores de versiones:
+
+Bajar versiones de Vite / Tailwind a combinaciones probadas.
+
+Añadir un DEPLOYMENT_LOCAL.md con pasos exactos para Windows.
+
+Fase 1 – Cerrar el circuito RAG “documentos → búsqueda”
+
+En upload_document:
+
+Llamar a extract_and_chunk(file_path, file_type, metadata) de core/tools/extractors.py.
+
+Insertar chunks en el vectorstore de proyecto desde bootstrap (tiene _init_vectorstore con Chroma).
+
+Actualizar files.chunk_count y status en SQLite.
+
+Crear un script CLI tools/reindex_project.py:
+
+Recorre files de un proyecto y reindexa en Chroma.
+
+Útil cuando se cambien parámetros de chunking.
+
+Fase 2 – Recuperar análisis de cronogramas
+
+Reintroducir ScheduleAnalyzer:
+
+Tomar como referencia el diseño de 8.5.3 para XER/MPP.
+
+Ubicarlo en core/tools/analyzers/schedule_analyzer.py.
+
+Endpoints:
+
+/api/analysis/schedule que reciba XER/MPP, llame al analizador y devuelva:
+
+Camino crítico, retrasos, riesgos, etc.
+
+Integración con UI:
+
+En DocumentsPanel, detectar tipo XER/MPP y ofrecer botón “Analyze Schedule”.
+
+Opcional: panel específico en AnalyticsPanel para KPIs de cronograma.
+
+Fase 3 – Memoria, feedback y notas
+
+Feedback:
+
+Crear endpoint /api/chat/feedback que registre en DB:
+
+message_id, is_positive, reason, etc.
+
+Conectar botones de ThumbsUp/Down en ChatInterface a este endpoint.
+
+Notas / minutas:
+
+Diseñar tablas notes, note_items en SQLite.
+
+Endpoints /api/notes CRUD.
+
+Reemplazar MOCK_NOTES en NotesPanel por llamadas reales.
+
+Ajustar generación de minutas según el formato que definiste (texto plano / Markdown sin negritas).
+
+Fase 4 – Modelos y configuración desde UI
+
+Definir en DB una tabla project_settings o similar.
+
+Exponer endpoints /api/project/settings GET/PUT.
+
+Conectar ProjectPanel para:
+
+Elegir proveedor (OpenAI / Anthropic) y modelo por task_type.
+
+Activar/desactivar librería global en RAG.
+
+Activar/desactivar streaming, HyDE, reranker, etc.
+
+Fase 5 – Web search + integración externa
+
+Añadir un módulo de herramienta de búsqueda web en core/tools/web_search.py.
+
+Integrarlo como “tool” en el router para ciertos task_type (ej. analysis o benchmark).
+
+Ajustar prompts para combinar:
+
+Datos internos (RAG)
+
+Métricas externas (web) y explicitar de dónde viene cada dato.
+
+Si querés, en el próximo paso puedo:
+
+Bajar de este informe a un checklist concreto de issues/tickets (tipo JIRA) con títulos, descripción, archivo/función afectada y criterio de aceptación, para que puedas pasárselo tal cual a Claude Code o al IDE que uses.

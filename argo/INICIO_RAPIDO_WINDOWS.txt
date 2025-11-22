@@ -1,0 +1,88 @@
+╔══════════════════════════════════════════════════════════════╗
+║          ARGO v10 - INICIO RÁPIDO PARA WINDOWS              ║
+╚══════════════════════════════════════════════════════════════╝
+
+PASO 1: INSTALAR PRERREQUISITOS
+────────────────────────────────────────────────────────────────
+
+1. Python 3.11 o superior
+   → Descargar: https://www.python.org/downloads/
+   → IMPORTANTE: Marcar "Add Python to PATH"
+
+2. Node.js 18 o superior
+   → Descargar: https://nodejs.org/
+   → Instalar la versión LTS
+
+VERIFICAR INSTALACIÓN:
+   python --version    (debe mostrar Python 3.11+ o 3.12+)
+   node --version      (debe mostrar v18.x+ o superior)
+   npm --version       (debe mostrar 9.x+ o superior)
+
+────────────────────────────────────────────────────────────────
+
+PASO 2: CONFIGURAR API KEY
+────────────────────────────────────────────────────────────────
+
+1. Abrir: ARGO\backend\.env
+
+   Si no existe, copiar .env.example a .env
+
+2. Agregar tu OpenAI API key:
+   OPENAI_API_KEY=sk-tu-key-aqui
+
+────────────────────────────────────────────────────────────────
+
+PASO 3: INICIAR ARGO
+────────────────────────────────────────────────────────────────
+
+Opción A - AUTOMÁTICO (recomendado):
+
+   .\scripts\start-windows.bat
+
+Opción B - MANUAL:
+
+   Terminal 1 (Backend):
+   cd ARGO\backend
+   python -m venv venv
+   venv\Scripts\activate
+   pip install -r requirements.txt
+   python main.py
+
+   Terminal 2 (Frontend):
+   cd ARGO\frontend
+   npm install
+   npm run dev:client
+
+────────────────────────────────────────────────────────────────
+
+PASO 4: ACCEDER A ARGO
+────────────────────────────────────────────────────────────────
+
+   Frontend:  http://localhost:5000
+   Backend:   http://localhost:8000
+   API Docs:  http://localhost:8000/docs
+
+────────────────────────────────────────────────────────────────
+
+PROBLEMAS COMUNES:
+────────────────────────────────────────────────────────────────
+
+• "Python no encontrado"
+  → Reinstalar Python con "Add Python to PATH" marcado
+
+• "npm: command not found"
+  → Instalar Node.js desde https://nodejs.org/
+
+• "Port 8000 already in use"
+  → netstat -ano | findstr :8000
+  → taskkill /PID <numero> /F
+
+• Scripts .bat no funcionan
+  → Usar PowerShell como administrador
+  → Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+────────────────────────────────────────────────────────────────
+
+Para ayuda detallada, consulta: WINDOWS_INSTALL.md
+
+╚══════════════════════════════════════════════════════════════╝
