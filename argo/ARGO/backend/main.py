@@ -23,7 +23,7 @@ import traceback
 from core.bootstrap import initialize_argo
 from core.config import get_config
 from core.logger import get_logger
-from tools.extractors import extract_and_chunk, get_file_info
+from core.tools.extractors import extract_and_chunk, get_file_info
 
 # Initialize
 logger = get_logger("FastAPI")
