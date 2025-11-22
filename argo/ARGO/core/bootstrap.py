@@ -192,7 +192,7 @@ class ARGOBootstrap:
         # Initialize Drive sync if enabled
         if self.config.get("apis.google_drive.enabled", False):
             try:
-                from tools.google_drive_sync import create_drive_sync
+                from core.tools.google_drive_sync import create_drive_sync
                 
                 drive_sync = create_drive_sync(self.unified_db, self.config)
                 

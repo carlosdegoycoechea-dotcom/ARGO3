@@ -139,7 +139,7 @@ class ExcelAnalyzer:
         try:
             pd.to_datetime(series, errors='coerce')
             return True
-        except:
+        except Exception:
             return False
     
     def _is_numeric_string(self, series) -> bool:
@@ -147,7 +147,7 @@ class ExcelAnalyzer:
         try:
             pd.to_numeric(series, errors='coerce')
             return True
-        except:
+        except Exception:
             return False
     
     def _get_summary_stats(self, df: pd.DataFrame) -> Dict[str, Any]:
@@ -211,7 +211,7 @@ class ExcelAnalyzer:
         
         try:
             return df.iloc[row_num, col_num]
-        except:
+        except (IndexError, KeyError):
             return None
     
     def get_range_values(self, sheet: str, start_cell: str, end_cell: str) -> pd.DataFrame:
@@ -243,7 +243,7 @@ class ExcelAnalyzer:
         
         try:
             return df.iloc[start_row:end_row+1, start_col:end_col+1]
-        except:
+        except (IndexError, KeyError):
             return pd.DataFrame()
     
     def calculate(self, sheet: str, operation: str, range_or_column: str) -> float:
