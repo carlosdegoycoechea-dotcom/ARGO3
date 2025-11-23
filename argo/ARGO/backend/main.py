@@ -25,6 +25,9 @@ from core.config import get_config
 from core.logger import get_logger
 from core.tools.extractors import extract_and_chunk, get_file_info
 
+# Intelligence Pipeline
+from backend.intelligence_pipeline import apply_intelligence_pipeline
+
 # Initialize
 logger = get_logger("FastAPI")
 app = FastAPI(
@@ -254,7 +257,13 @@ async def get_project(argo=Depends(get_argo)):
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest, argo=Depends(get_argo)):
     """
-    Chat endpoint - Process user message with RAG
+    Chat endpoint - Process user message with RAG + Intelligence Pipeline
+
+    🧠 INTELLIGENCE PIPELINE ENABLED:
+    1. Query Planning: Analiza y clasifica la query
+    2. Agentic Retrieval: Búsqueda adaptativa inteligente
+    3. Corrective RAG: Filtra y optimiza el contexto
+    4. Self-Reflective: Valida y mejora la respuesta
     """
 
     try:
@@ -262,73 +271,66 @@ async def chat(request: ChatRequest, argo=Depends(get_argo)):
         rag_engine = argo['project_components']['rag_engine']
         model_router = argo['model_router']
 
-        logger.info(f"Processing chat query: {request.message[:50]}...")
+        logger.info(f"🧠 Processing chat with Intelligence Pipeline: {request.message[:50]}...")
 
-        # Search RAG
-        results, metadata = rag_engine.search(
+        # =====================================================================
+        # INTELLIGENCE PIPELINE - "Subir la inteligencia" del sistema
+        # =====================================================================
+
+        request_options = {
+            'use_hyde': request.use_hyde,
+            'use_reranker': request.use_reranker,
+            'include_library': request.include_library
+        }
+
+        pipeline_result = apply_intelligence_pipeline(
             query=request.message,
-            top_k=5,
-            use_hyde=request.use_hyde,
-            use_reranker=request.use_reranker,
-            include_library=request.include_library
-        )
-
-        # Format context
-        context = rag_engine.format_context(results)
-
-        # Build messages for LLM
-        system_prompt = f"""You are ARGO, an enterprise project management assistant.
-
-Use the following context to answer the user's question accurately and professionally.
-
-{context}
-
-Guidelines:
-- Answer based on the context provided
-- Be concise and professional
-- Cite sources when appropriate
-- If information is not in context, say so clearly
-- Use proper business terminology"""
-
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": request.message}
-        ]
-
-        # Get response from router
-        response = model_router.run(
-            task_type="chat",
+            rag_engine=rag_engine,
+            model_router=model_router,
             project_id=project['id'],
-            messages=messages
+            request_options=request_options
         )
 
-        # Extract sources
-        sources = [
-            {
-                "source": r.metadata.get('source', 'Unknown'),
-                "score": float(r.score),
-                "rerank_score": float(r.rerank_score) if r.rerank_score else None,
-                "is_library": r.is_library
-            }
-            for r in results
-        ]
+        # =====================================================================
+        # ENHANCED METADATA - Incluye toda la inteligencia del pipeline
+        # =====================================================================
 
-        # Calculate average confidence
-        avg_confidence = sum(r.score for r in results) / len(results) if results else 0.0
+        metadata = {
+            # Original request options
+            "used_hyde": request.use_hyde,
+            "used_reranker": request.use_reranker,
+            "included_library": request.include_library,
+            "num_results": len(pipeline_result.sources),
 
-        logger.info(f"✅ Chat response generated ({len(sources)} sources)")
+            # Intelligence Pipeline metadata
+            "intelligence_pipeline": {
+                "enabled": True,
+                "query_type": pipeline_result.query_plan.get('query_type'),
+                "complexity": pipeline_result.query_plan.get('complexity'),
+                "retrieval_confidence": pipeline_result.retrieval_result.get('confidence'),
+                "context_confidence": pipeline_result.corrected_context.get('confidence_level'),
+                "hallucination_risk": pipeline_result.hallucination_risk,
+                "consistency_score": pipeline_result.reflection_result.get('consistency_score'),
+                "was_regenerated": pipeline_result.reflection_result.get('was_regenerated'),
+                "has_contradictions": pipeline_result.corrected_context.get('has_contradictions'),
+                "missing_info_detected": pipeline_result.corrected_context.get('missing_info_detected'),
+            },
+
+            # Pipeline notes (para debugging/logging)
+            "pipeline_notes": pipeline_result.pipeline_notes
+        }
+
+        logger.info(f"✅ Chat response with Intelligence Pipeline complete:")
+        logger.info(f"   → Final confidence: {pipeline_result.confidence:.2f}")
+        logger.info(f"   → Hallucination risk: {pipeline_result.hallucination_risk}")
+        logger.info(f"   → Sources: {len(pipeline_result.sources)}")
 
         return ChatResponse(
-            message=response.content,
-            sources=sources,
-            confidence=avg_confidence,
+            message=pipeline_result.final_response,
+            sources=pipeline_result.sources,
+            confidence=pipeline_result.confidence,
             timestamp=datetime.now().isoformat(),
-            metadata={
-                "used_hyde": request.use_hyde,
-                "used_reranker": request.use_reranker,
-                "included_library": request.include_library,
-                "num_results": len(results)
-            }
+            metadata=metadata
         )
 
     except Exception as e:
