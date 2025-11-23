@@ -12,7 +12,7 @@ Este plugin filtra y mejora el contexto antes de enviarlo al LLM:
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
 
-from core.plugins.base import BasePlugin, PluginMetadata, PluginType
+from core.plugins.base import PluginMetadata, PluginCapability
 
 
 @dataclass
@@ -27,7 +27,7 @@ class CorrectedContext:
     correction_notes: List[str]        # Qué correcciones se aplicaron
 
 
-class CorrectiveRAGPlugin(BasePlugin):
+class CorrectiveRAGPlugin:
     """
     Plugin de corrección de contexto RAG
 
@@ -35,7 +35,6 @@ class CorrectiveRAGPlugin(BasePlugin):
     """
 
     def __init__(self):
-        super().__init__()
         self.min_score_threshold = 0.3  # Chunks bajo este score se descartan
         self.contradiction_threshold = 0.15  # Diferencia de score que sugiere contradicción
 
@@ -46,8 +45,7 @@ class CorrectiveRAGPlugin(BasePlugin):
             version="1.0.0",
             description="Filtra y optimiza contexto eliminando ruido y contradicciones",
             author="ARGO Team",
-            plugin_type=PluginType.ANALYSIS,
-            tags=["intelligence", "correction", "context-optimization"]
+            capabilities=[PluginCapability.INTELLIGENCE]
         )
 
     def execute(self, results: List, query: str, query_plan, **kwargs) -> CorrectedContext:

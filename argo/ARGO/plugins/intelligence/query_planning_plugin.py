@@ -12,7 +12,7 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from enum import Enum
 
-from core.plugins.base import BasePlugin, PluginMetadata, PluginType
+from core.plugins.base import PluginMetadata, PluginCapability
 
 
 class QueryType(str, Enum):
@@ -47,7 +47,7 @@ class QueryPlan:
     reasoning: str                   # Por qué este plan
 
 
-class QueryPlanningPlugin(BasePlugin):
+class QueryPlanningPlugin:
     """
     Plugin de planificación de queries
 
@@ -97,8 +97,7 @@ class QueryPlanningPlugin(BasePlugin):
             version="1.0.0",
             description="Analiza queries y crea plan de ejecución inteligente",
             author="ARGO Team",
-            plugin_type=PluginType.ANALYSIS,
-            tags=["intelligence", "planning", "query-analysis"]
+            capabilities=[PluginCapability.INTELLIGENCE]
         )
 
     def execute(self, query: str, **kwargs) -> QueryPlan:

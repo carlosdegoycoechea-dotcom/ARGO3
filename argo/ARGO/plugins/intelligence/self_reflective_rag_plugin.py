@@ -12,7 +12,7 @@ Este plugin analiza la respuesta generada y:
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
 
-from core.plugins.base import BasePlugin, PluginMetadata, PluginType
+from core.plugins.base import PluginMetadata, PluginCapability
 
 
 @dataclass
@@ -27,7 +27,7 @@ class ReflectionResult:
     was_regenerated: bool              # Si se regeneró
 
 
-class SelfReflectiveRAGPlugin(BasePlugin):
+class SelfReflectiveRAGPlugin:
     """
     Plugin de auto-reflexión sobre respuestas
 
@@ -35,8 +35,6 @@ class SelfReflectiveRAGPlugin(BasePlugin):
     """
 
     def __init__(self):
-        super().__init__()
-
         # Patterns que indican posible alucinación
         self.hallucination_patterns = [
             # Afirmaciones muy específicas sin citar fuente
@@ -65,8 +63,7 @@ class SelfReflectiveRAGPlugin(BasePlugin):
             version="1.0.0",
             description="Analiza respuestas para detectar alucinaciones y verificar consistencia",
             author="ARGO Team",
-            plugin_type=PluginType.ANALYSIS,
-            tags=["intelligence", "reflection", "hallucination-detection"]
+            capabilities=[PluginCapability.INTELLIGENCE]
         )
 
     def execute(self, response: str, context: str, query: str,

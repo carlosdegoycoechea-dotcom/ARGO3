@@ -11,7 +11,7 @@ Este plugin ejecuta la búsqueda de manera inteligente:
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
 
-from core.plugins.base import BasePlugin, PluginMetadata, PluginType
+from core.plugins.base import PluginMetadata, PluginCapability
 
 
 @dataclass
@@ -25,7 +25,7 @@ class RetrievalResult:
     refinement_suggestions: List[str]  # Sugerencias de mejora
 
 
-class AgenticRetrievalPlugin(BasePlugin):
+class AgenticRetrievalPlugin:
     """
     Plugin de recuperación agéntica
 
@@ -33,7 +33,6 @@ class AgenticRetrievalPlugin(BasePlugin):
     """
 
     def __init__(self):
-        super().__init__()
         self.confidence_threshold = 0.7  # Threshold para considerar resultados buenos
 
     @property
@@ -43,8 +42,7 @@ class AgenticRetrievalPlugin(BasePlugin):
             version="1.0.0",
             description="Recuperación inteligente con auto-ajuste y estrategias adaptativas",
             author="ARGO Team",
-            plugin_type=PluginType.ANALYSIS,
-            tags=["intelligence", "retrieval", "adaptive"]
+            capabilities=[PluginCapability.INTELLIGENCE]
         )
 
     def execute(self, rag_engine, query: str, query_plan, **kwargs) -> RetrievalResult:
